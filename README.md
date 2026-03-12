@@ -32,8 +32,8 @@ I'm actively working on this project to master Supabase. Planned improvements in
 - **Architecture**: MVVM + StateFlow
 - **Backend**: Supabase (Auth + PostgREST)
 - **Networking**: Supabase-Kt (io.github.jan-tennert.supabase)
-- **Dependency Injection**: (add Hilt/Dagger/Koin if you use it later)
-- **Minimum SDK**: 24+ (or whatever you set)
+- **Dependency Injection**: Dagger-Hilt
+- **Minimum SDK**: 25+
 
 ## 🔧 Setup Instructions
 
