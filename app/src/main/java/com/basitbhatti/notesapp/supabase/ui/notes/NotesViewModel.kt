@@ -6,6 +6,7 @@ import com.basitbhatti.notesapp.supabase.data.model.Note
 import com.basitbhatti.notesapp.supabase.data.repository.NotesRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 
 class NotesViewModel : ViewModel() {
@@ -19,7 +20,11 @@ class NotesViewModel : ViewModel() {
     val error: StateFlow<String?> = _error
 
     init {
-        loadNotes()
+        viewModelScope.launch {
+            repo.notesFlow(viewModelScope)
+                .catch { _error.value = it.message }
+                .collect { _notes.value = it }
+        }
     }
 
     fun loadNotes() {

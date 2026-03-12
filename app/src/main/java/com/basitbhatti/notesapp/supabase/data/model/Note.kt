@@ -9,5 +9,6 @@ class Note(
     @SerialName("user_id") val userId: String = "",
     val title: String,
     val content: String,
+    @SerialName("image_path") val imagePath: String? = null,
     @SerialName("created_at") val createdAt: String = ""
 )
