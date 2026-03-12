@@ -22,6 +22,8 @@ class NotesRepository {
     private val db = SupabaseClient.client.postgrest
     private val realtime = SupabaseClient.client.realtime
 
+    private val storageRepo = StorageRepository()
+
 
     fun notesFlow(scope: CoroutineScope): Flow<List<Note>> = flow {
 
@@ -29,19 +31,19 @@ class NotesRepository {
 
         val channel = realtime.channel("notes-changes")
 
-        channel.postgresChangeFlow<PostgresAction.Insert>(schema = "public"){
+        channel.postgresChangeFlow<PostgresAction.Insert>(schema = "public") {
             table = "notes"
         }.onEach {
             emit(db["notes"].select().decodeList<Note>())
         }.launchIn(scope)
 
-        channel.postgresChangeFlow<PostgresAction.Delete>(schema = "public"){
+        channel.postgresChangeFlow<PostgresAction.Delete>(schema = "public") {
             table = "notes"
         }.onEach {
             emit(db["notes"].select().decodeList<Note>())
         }.launchIn(scope)
 
-        channel.postgresChangeFlow<PostgresAction.Update>(schema = "public"){
+        channel.postgresChangeFlow<PostgresAction.Update>(schema = "public") {
             table = "notes"
         }.onEach {
             emit(db["notes"].select().decodeList<Note>())
@@ -56,12 +58,36 @@ class NotesRepository {
     suspend fun getNotes(): List<Note> =
         db["notes"].select().decodeList<Note>()
 
-    suspend fun addNote(title: String, content: String) {
+    suspend fun addNote(title: String, content: String, imageBytes: ByteArray? = null) {
         val userId = SupabaseClient.client.auth.currentUserOrNull()?.id ?: return
-        db["notes"].insert(
+
+        val note = db["notes"].insert(
             Note(title = title, content = content, userId = userId)
-        )
+        ) { select() }.decodeSingle<Note>()
+
+        if (imageBytes != null){
+            storageRepo.uploadImage(
+                userId, note.id, imageBytes
+            ).onSuccess { path ->
+                db["notes"].update({
+                    set("image_path", path)
+                }) {
+                    filter { eq("id", note.id) }
+                }
+            }
+        }
+
     }
+
+    suspend fun deleteNote(id: String, imagePath: String?){
+        db["notes"].delete {
+            filter { eq("id", id) }
+            imagePath?.let { storageRepo.deleteImage(it) }
+        }
+    }
+
+    suspend fun getSignedImageUrl(path: String): String? =
+        storageRepo.getSignedUrl(path).getOrNull()
 
     suspend fun deleteNote(id: String) {
         db["notes"].delete { filter { eq("id", id) } }

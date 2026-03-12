@@ -19,6 +19,9 @@ class NotesViewModel : ViewModel() {
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
 
+    private val _signedUrls = MutableStateFlow<Map<String, String>>(emptyMap())
+    val signedUrls: StateFlow<Map<String, String>> = _signedUrls
+
     init {
         viewModelScope.launch {
             repo.notesFlow(viewModelScope)
@@ -32,10 +35,25 @@ class NotesViewModel : ViewModel() {
             runCatching { repo.getNotes() }
                 .onSuccess {
                     _notes.value = it
+                    loadSignedUrls(notes.value)
                 }
                 .onFailure {
                     _error.value = it.message
                 }
+        }
+    }
+
+    private fun loadSignedUrls(notes: List<Note>){
+        viewModelScope.launch {
+            val urls = mutableMapOf<String, String>()
+            notes.forEach { note ->
+                note.imagePath?.let { path ->
+                    repo.getSignedImageUrl(path)?.let { url ->
+                        urls[note.id] = url
+                    }
+                }
+            }
+            _signedUrls.value = urls
         }
     }
 
